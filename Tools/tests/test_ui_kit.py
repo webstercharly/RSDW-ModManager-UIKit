@@ -1,0 +1,157 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from lupa import LuaRuntime
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+class UIKitTests(unittest.TestCase):
+    def setUp(self):
+        self.lua = LuaRuntime(unpack_returned_tuples=True)
+        self.lua.globals().scripts = (ROOT / "Scripts").as_posix()
+        self.lua.globals().gallery_path = (ROOT / "Modules/UIGallery/module.lua").as_posix()
+        self.lua.execute('package.path = scripts .. "/?.lua;" .. package.path')
+
+    def test_theme_overrides_merge_and_validate(self):
+        self.lua.execute("""
+            local themes = require("rlm_ui_theme")
+            local installed = { schemaVersion = 1, surfaces = { card = { radius = 21 } } }
+            local personal = { schemaVersion = 1, name = "Ink", surfaces = { card = { fill = { A = 0.95 } } } }
+            local theme = assert(themes.resolve(installed, personal))
+            assert(theme.name == "Ink" and theme.surfaces.card.radius == 21)
+            assert(theme.surfaces.card.fill.A == 0.95 and theme.surfaces.card.fill.R == 0.015)
+            assert(themes.defaults().surfaces.card.fill.A == 0.80)
+            assert(not themes.resolve({ schemaVersion = 2 }))
+            assert(not themes.resolve({ schemaVersion = 1, spacing = { row = 0 } }))
+            assert(not themes.resolve({ schemaVersion = 1, colors = { typo = 1 } }))
+        """)
+
+    def test_theme_file_bom_missing_and_size_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ui-theme.json"
+            self.lua.globals().theme_path = path.as_posix()
+            self.lua.execute("""
+                read_theme = require("rlm_ui_theme").read
+                function decoder(text)
+                    assert(text == '{"schemaVersion":1}')
+                    return { schemaVersion = 1 }
+                end
+                local data, problem = read_theme(theme_path, decoder)
+                assert(data == nil and problem == nil)
+            """)
+            path.write_text('{"schemaVersion":1}', encoding="utf-8-sig")
+            self.lua.execute("assert(read_theme(theme_path, decoder).schemaVersion == 1)")
+            path.write_bytes(b" " * 32769)
+            self.lua.execute("""
+                local data, problem = read_theme(theme_path, decoder)
+                assert(data == nil and problem == "theme exceeds 32 KiB")
+            """)
+
+    def test_rounded_surface_uses_resolved_color_and_radius(self):
+        self.lua.execute("""
+            local theme = assert(require("rlm_ui_theme").resolve({ schemaVersion = 1,
+                surfaces = { rail = { radius = 14, fill = { A = 0.68 }, edge = 0.24 } } }))
+            local border = { Background = { OutlineSettings = {} } }
+            function border:SetBrushColor(color) self.color = color end
+            function border:SetBrush(brush) self.brush = brush end
+            assert(require("rlm_glass").apply(border, "rail", theme))
+            assert(border.color.A == 0.68 and border.brush.DrawAs == 4)
+            assert(border.brush.OutlineSettings.CornerRadii.X == 14)
+            assert(border.brush.OutlineSettings.Color.SpecifiedColor.A == 0.24)
+        """)
+
+    def test_disabled_button_can_be_reused_as_enabled(self):
+        self.lua.execute("""
+            FText = function(s) return s end
+            local kit = require("rlm_ui_kit").new({ valid = function(widget) return widget ~= nil end })
+            local button, label = {}, {}
+            function button:SetIsEnabled(enabled) self.enabled = enabled end
+            function label:SetText(text) self.text = text end
+            function label:SetColorAndOpacity(color) self.color = color.SpecifiedColor end
+            local entry = { button = button, label = label }
+            kit.set_button_enabled(entry, false)
+            kit.update_button(entry, "Unavailable", false)
+            assert(button.enabled == false and label.color.R == 0.49)
+            kit.set_button_enabled(entry, true)
+            kit.update_button(entry, "Selected", true)
+            assert(button.enabled == true and label.color.R == 0.91)
+        """)
+
+    def test_input_styles_show_distinct_hover_and_focus(self):
+        self.lua.execute("""
+            local input = { WidgetStyle = {
+                BackgroundImageNormal = {},
+                BackgroundImageHovered = {},
+                BackgroundImageFocused = {},
+                TextStyle = { Font = {} },
+            } }
+            function input:SetFont(font) self.font = font end
+            local kit = require("rlm_ui_kit").new({})
+            kit.style_input(input)
+            local style = input.WidgetStyle
+            local normal = style.BackgroundImageNormal.TintColor.SpecifiedColor
+            local hover = style.BackgroundImageHovered.TintColor.SpecifiedColor
+            local focus = style.BackgroundImageFocused.TintColor.SpecifiedColor
+            assert(normal.B < hover.B and hover.B < focus.B and focus.B > focus.R)
+            assert(style.ForegroundColor.SpecifiedColor.R == style.FocusedForegroundColor.SpecifiedColor.R)
+            assert(input.font.Size == 17)
+        """)
+
+    def test_highlight_is_hit_test_invisible_and_theme_controlled(self):
+        self.lua.execute("""
+            local function widget()
+                return {
+                    Background = { OutlineSettings = {} }, children = {},
+                    SetVisibility = function(self, value) self.visibility = value end,
+                    SetBrushColor = function(self, color) self.color = color end,
+                    SetBrush = function() end,
+                    AddChildToOverlay = function(self, child)
+                        self.children[#self.children + 1] = child
+                        return { SetHorizontalAlignment = function() end, SetVerticalAlignment = function() end }
+                    end,
+                }
+            end
+            local kit = require("rlm_ui_kit").new({
+                construct = widget, pad = function() end,
+                sized = function(_, child, _, height)
+                    assert(height == 1)
+                    local holder = widget()
+                    holder.child = child
+                    return holder
+                end,
+            })
+            local rail = kit.surface_with_shadow({}, widget(), "rail")
+            local highlight = rail.children[3]
+            assert(highlight.visibility == 3 and highlight.child.color.A > 0)
+            local muted = assert(require("rlm_ui_theme").resolve({ schemaVersion = 1,
+                surfaces = { rail = { highlight = 0 } } }))
+            kit.set_theme(muted)
+            assert(#kit.surface_with_shadow({}, widget(), "rail").children == 2)
+            assert(#kit.surface_with_shadow({}, widget(), "card").children == 2)
+        """)
+
+    def test_gallery_filters_selects_and_resets(self):
+        manifest = json.loads((ROOT / "Modules/UIGallery/manifest.json").read_text(encoding="utf-8"))
+        self.assertTrue(next(action for action in manifest["ui"]["actions"] if action["id"] == "unavailable")["disabled"])
+        self.lua.execute("""
+            local gallery = assert(loadfile(gallery_path))()
+            local state = { uiThemeName = "Ink" }
+            local view = gallery.activate(state)
+            assert(view.status == "Ink" and #view.preview.ingredients == 4)
+            assert(view.rows[1].selected and view.rows[3].disabled)
+            assert(gallery.run_action(state, "search", "  text-only "))
+            view = gallery.activate(state)
+            assert(view.focusInput and view.inputValue == "text-only" and #view.rows == 1)
+            assert(gallery.select_row(state, view.rows[1].value))
+            view = gallery.activate(state)
+            assert(view.preview.icon == nil and view.rows[1].selected)
+            assert(not gallery.run_action(state, "unavailable", ""))
+            assert(gallery.run_action(state, "search", "no-match"))
+            assert(gallery.activate(state).rows[1].disabled)
+            assert(gallery.run_action(state, "reset"))
+            assert(gallery.activate(state).preview.icon ~= nil)
+        """)

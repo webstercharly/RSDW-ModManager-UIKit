@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "ui-gallery",
+  "name": "UI Gallery",
+  "description": "Preview shared Mod Manager components.",
+  "version": "0.2.0",
+  "order": 96,
+  "entry": "module.lua",
+  "ui": {
+    "menuLabel": "UI GALLERY",
+    "actions": [
+      { "id": "search", "label": "SEARCH", "inputHint": "Filter examples", "requiresInput": true, "primary": true },
+      { "id": "reset", "label": "RESET" },
+      { "id": "unavailable", "label": "UNAVAILABLE", "disabled": true }
+    ]
+  }
+}
