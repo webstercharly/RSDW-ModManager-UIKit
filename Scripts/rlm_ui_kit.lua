@@ -1,7 +1,16 @@
 -- Reusable UMG components. The host owns widget lifetimes, input and textures.
 local glass = require("rlm_glass")
 local themes = require("rlm_ui_theme")
-local M = { VERSION = "0.3.0" }
+local M = { VERSION = "0.4.0" }
+
+function M.style_button_label(text)
+    pcall(function()
+        text:SetVisibility(3)
+        text:SetAutoWrapText(false)
+        text:SetShadowOffset({ X = 1, Y = 1 })
+        text:SetShadowColorAndOpacity({ R = 0, G = 0, B = 0, A = 0.9 })
+    end)
+end
 
 function M.new(host)
     local valid, construct, sized, pad = host.valid, host.construct, host.sized, host.pad
@@ -128,12 +137,7 @@ function M.new(host)
         if accent then pcall(function() accent:SetVisibility(1) end) end
         local text = new_text(tree, text_class, tostring(label or ""), options.size or theme.typography.control,
             options.color or theme.colors.cream)
-        pcall(function()
-            text:SetVisibility(3)
-            text:SetAutoWrapText(false)
-            text:SetShadowOffset({ X = 1, Y = 1 })
-            text:SetShadowColorAndOpacity({ R = 0, G = 0, B = 0, A = 0.9 })
-        end)
+        M.style_button_label(text)
         local text_slot = overlay:AddChildToOverlay(text)
         pcall(function()
             text_slot:SetHorizontalAlignment(options.center == true and 2 or 1)

@@ -8,6 +8,7 @@ The rail and action dock catch a subtle cool highlight along their top edges.
 | Component | Behaviour |
 | --- | --- |
 | Surface | Named Slate fills, outlines, rounded corners and optional shadow |
+| HUD panel | Shared Graphite backing for the game's native panel, with the original layout and input |
 | Navigation and actions | Native game buttons with shared selected, primary and disabled styling |
 | Search field | Shared editable text box styling, including hover and focus |
 | Result row | Reusable row with an optional thumbnail and selected or disabled state |
@@ -67,6 +68,8 @@ personal override. Omit any token to inherit its value. Colours use linear
 are defined in [rlm_ui_theme.lua](Scripts/rlm_ui_theme.lua). Theme files are
 limited to 32 KiB. Set a rail or dock's `highlight` to zero to remove its
 top highlight.
+Standalone Quest Helper and Boss Helper use the same personal theme file
+when they start. Set `surfaces.hud` to tune their common HUD backing.
 
 ## Host integration
 
@@ -76,6 +79,12 @@ and the default theme in `Data/`. To include the gallery, copy
 The gallery requires the host integration for the shared visuals and disabled
 controls. The in-game manager owns the viewport and supplies widget creation,
 native button routing and texture loading.
+
+Standalone overlays can vendor `rlm_ui_theme.lua` and `rlm_glass.lua` and
+supply a JSON decoder to `themes.personal`. They can mount existing content
+with `glass.mount_panel`. This works without the Mod Manager installed.
+See the [native UI patterns](docs/patterns.md#dragonwilds-native-ui) for
+how the shared layer fits the game's widgets.
 
 The gallery refers to textures provided by the installed game at runtime.
 The reused Mod Manager input styling carries its original

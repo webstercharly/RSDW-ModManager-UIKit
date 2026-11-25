@@ -50,3 +50,24 @@ The host creates a kit with `new(host)`, supplying `valid`, `construct`,
 handles the image requests with its existing queue. Apply a resolved theme
 with `set_theme` before constructing a fresh panel. Pass `"rail"` or
 `"dock"` to `surface_with_shadow` to render the configured top highlight.
+
+## Dragonwilds native UI
+
+For a new HUD card, use the game's `WBP_Panel` as the host, its
+`WBP_DomTextBlock` for game-scale text, and
+`glass.mount_panel(frame, content, valid, theme)` for the Graphite backing.
+Keep the outer panel's placement and mouse behavior under the caller's
+control. The wrapper adds no padding to the native content, so the caller
+still owns sizing. It attaches to the original panel when a Border cannot
+be created.
+
+Use the game's CommonUI buttons for clickable controls. Reuse the kit's
+button label styling if a separate HUD must configure buttons in a staged
+layout pass. For decorative text, arrows and backings, use hit-test-invisible
+widgets so they leave mouse input to the underlying interface. Retain the
+gameplay signals in combat warnings, navigation and map marker states.
+
+Use a shared component for recurring layouts. If a new layout is useful
+to more than one mod, add the presentation primitive to the kit and keep
+the gameplay state and callbacks in the mod. Keep vendored kit files in
+sync with the public source.

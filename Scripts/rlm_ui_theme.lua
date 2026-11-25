@@ -1,5 +1,6 @@
 -- UI Kit theme data. Values are Slate units and linear RGBA.
 local M = {}
+local active
 
 local function rgba(r, g, b, a)
     return { R = r, G = g, B = b, A = a or 1 }
@@ -33,6 +34,7 @@ function M.defaults()
             rail = surface(18, 0.012, 0.015, 0.021, 0.53, 0.17, 0.23),
             dock = surface(18, 0.016, 0.020, 0.028, 0.63, 0.18, 0.25),
             card = surface(20, 0.015, 0.018, 0.024, 0.80, 0.11),
+            hud = surface(12, 0.015, 0.018, 0.024, 0.87, 0.20),
             inset = surface(10, 0.105, 0.125, 0.154, 0.20, 0.09),
             stats = surface(10, 0.083, 0.099, 0.122, 0.16, 0.07),
             art = surface(100, 0.075, 0.084, 0.101, 0.09, 0),
@@ -108,6 +110,34 @@ function M.read(path, decode)
     if not ok then return nil, "invalid theme JSON: " .. tostring(data) end
     if type(data) ~= "table" then return nil, "theme root must be a JSON object" end
     return data
+end
+
+function M.load(decode, ...)
+    local layers = {}
+    for index = 1, select("#", ...) do
+        local path = select(index, ...)
+        if path then
+            local data, problem = M.read(path, decode)
+            if problem then return nil, path .. ": " .. problem end
+            if data then layers[#layers + 1] = data end
+        end
+    end
+    return M.resolve(table.unpack(layers))
+end
+
+function M.personal(decode)
+    local root = os.getenv("LOCALAPPDATA")
+    local path = root and root ~= "" and (root .. "\\RSDWLoadoutManager\\ui-theme.json") or nil
+    return M.load(decode, path)
+end
+
+function M.set_active(theme)
+    active = theme
+end
+
+function M.active()
+    if not active then active = M.defaults() end
+    return active
 end
 
 return M

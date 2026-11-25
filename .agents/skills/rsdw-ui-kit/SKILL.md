@@ -13,6 +13,9 @@ when changing the module view contract. In the installed manager, follow
 - Start from the module's manifest and `activate` view. Supply an optional
   preview, pooled result rows and visible manifest actions. Add a shared
   component only when existing ones cannot express the requested interaction.
+- For separate game HUDs, use the [native UI patterns](https://github.com/webstercharly/RSDW-ModManager-UIKit/blob/main/docs/patterns.md#dragonwilds-native-ui).
+  Build on the game's panel, text and button primitives and use the kit for
+  the backdrop and text styling. Preserve gameplay colours and input behavior.
 - Put the clearest glass treatment on the module rail and action dock. Use
   the quieter card behind text, stats and ingredient names. Tune shared
   tokens for changes that should appear across modules.

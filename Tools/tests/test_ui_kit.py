@@ -64,6 +64,36 @@ class UIKitTests(unittest.TestCase):
             assert(border.brush.OutlineSettings.Color.SpecifiedColor.A == 0.24)
         """)
 
+    def test_native_hud_mount_uses_active_theme_and_preserves_content(self):
+        self.lua.execute("""
+            local themes = require("rlm_ui_theme")
+            local glass = require("rlm_glass")
+            local valid = function(widget) return type(widget) == "table" end
+            local host, background = {}, {}
+            function host:AddChild(child) self.child = child end
+            function background:SetRenderOpacity(opacity) self.opacity = opacity end
+            local frame, content = { PanelContent = host, WidgetTree = {}, BackgroundPanel = background }, {}
+            function StaticFindObject() return {} end
+            function FName(name) return name end
+            function StaticConstructObject()
+                return {
+                    Background = { OutlineSettings = {} },
+                    AddChild = function(self, child) self.child = child end,
+                    SetPadding = function() end,
+                    SetBrushColor = function(self, color) self.color = color end,
+                    SetBrush = function(self, brush) self.brush = brush end,
+                }
+            end
+            themes.set_active(assert(themes.resolve({ schemaVersion = 1,
+                surfaces = { hud = { fill = { A = 0.92 } } } })))
+            assert(glass.mount_panel(frame, content, valid))
+            assert(host.child.child == content and host.child.color.A == 0.92)
+            assert(host.child.brush.DrawAs == 4 and background.opacity == 0.22)
+            function StaticFindObject() return nil end
+            assert(glass.mount_panel(frame, content, valid))
+            assert(host.child == content)
+        """)
+
     def test_disabled_button_can_be_reused_as_enabled(self):
         self.lua.execute("""
             FText = function(s) return s end
