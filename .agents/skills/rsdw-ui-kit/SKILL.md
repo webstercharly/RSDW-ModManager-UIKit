@@ -7,8 +7,8 @@ description: Build or review Dragonwilds Mod Manager views with the shared UI Ki
 
 Use the existing components in `rlm_ui_kit.lua` and defaults in
 `rlm_ui_theme.lua`. Read the [design patterns](https://github.com/webstercharly/RSDW-ModManager-UIKit/blob/main/docs/patterns.md)
-when changing the module view contract. In the installed manager, use its
-Mod Manager UI and UE4SS development skills for widget lifecycle and reload.
+when changing the module view contract. In the installed manager, follow
+`AGENTS.md` and `.agent/SKILLS.md` for widget lifecycle and reload guidance.
 
 - Start from the module's manifest and `activate` view. Supply an optional
   preview, pooled result rows and visible manifest actions. Add a shared
@@ -22,6 +22,9 @@ Mod Manager UI and UE4SS development skills for widget lifecycle and reload.
 - Keep item art supplemental to readable text. Reuse native texture references
   and the host image queue. Compare illustrated, text-only and missing-image
   states in the gallery before changing the view contract.
+- Keep inventory stats, on-use effects and ingredients distinct. Show a
+  numerical benefit or duration when the item data supports it and omit
+  unknown values.
 - For design reviews, theme changes and visual acceptance, read
   [materials and readability](references/materials.md). Verify the result in
   the gallery over bright and dark scenes. Record syntax/tests separately

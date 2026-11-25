@@ -38,6 +38,8 @@ small lists, `inputValue`, `focusInput`, and `actionIds` to order and show a
 subset of declared actions. A preview requires a `title`. Each optional
 `stats` element has a `label` and `value`. Each optional `ingredients`
 element has a `title`, `count` and optional symbolic game texture `icon`.
+Use `benefits` for plain-text on-use effects. Keep weight and stack limit
+in `stats`, and use line breaks to separate immediate effects from perks.
 Use `recipe` as a text fallback for the grid and `footnote` for supporting
 information. A card with no artwork expands to fill the available width.
 

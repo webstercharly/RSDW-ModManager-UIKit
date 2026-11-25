@@ -1,7 +1,7 @@
 -- Reusable UMG components. The host owns widget lifetimes, input and textures.
 local glass = require("rlm_glass")
 local themes = require("rlm_ui_theme")
-local M = { VERSION = "0.2.0" }
+local M = { VERSION = "0.3.0" }
 
 function M.new(host)
     local valid, construct, sized, pad = host.valid, host.construct, host.sized, host.pad
@@ -270,10 +270,12 @@ function M.new(host)
 
         local title = new_text(tree, text_class, "", theme.typography.title, theme.colors.gold)
         local description = new_text(tree, text_class, "", theme.typography.body, theme.colors.cream)
+        local benefits_heading = new_text(tree, text_class, "On use", 13, theme.colors.gold)
+        local benefits = new_text(tree, text_class, "", theme.typography.body, theme.colors.cream)
         local recipe_heading = new_text(tree, text_class, "Recipe ingredients", 13, theme.colors.gold)
         local recipe_summary = new_text(tree, text_class, "", 14, theme.colors.cream)
         local footnote = new_text(tree, text_class, "", theme.typography.caption, theme.colors.muted)
-        for _, block in ipairs({ title, description, recipe_summary, footnote }) do
+        for _, block in ipairs({ title, description, benefits, recipe_summary, footnote }) do
             -- The installed game exposes auto-wrap, but does not expose the
             -- optional SetWrapTextAt method. The fill slot constrains the width.
             pcall(function() block:SetAutoWrapText(true) end)
@@ -287,6 +289,8 @@ function M.new(host)
             stats_holder:SetPadding({ Left = 12, Top = 7, Right = 12, Bottom = 7 })
         end
         pad(body:AddChildToVerticalBox(stats_holder), 0, 0, 0, 13)
+        pad(body:AddChildToVerticalBox(benefits_heading), 0, 0, 0, 3)
+        pad(body:AddChildToVerticalBox(benefits), 0, 0, 0, 13)
         pad(body:AddChildToVerticalBox(recipe_heading), 0, 0, 0, 3)
         local ingredient_grid = construct(tree, "UniformGridPanel")
         if ingredient_grid then
@@ -323,7 +327,8 @@ function M.new(host)
             cells[index] = { holder = column, divider = divider_holder, label = label, value = value }
         end
         return { art = art, image = image, image_holder = image_holder, title = title,
-            description = description, recipe_heading = recipe_heading, recipe_summary = recipe_summary,
+            description = description, benefits_heading = benefits_heading, benefits = benefits,
+            recipe_heading = recipe_heading, recipe_summary = recipe_summary,
             ingredient_grid = ingredient_grid, ingredient_cells = {},
             footnote = footnote, stats = stats_holder, cells = cells }
     end
@@ -342,6 +347,10 @@ function M.new(host)
         if not card then return end
         card.title:SetText(FText(tostring(preview.title or "")))
         card.description:SetText(FText(tostring(preview.description or "")))
+        local benefits = type(preview.benefits) == "string" and preview.benefits or ""
+        card.benefits:SetText(FText(benefits))
+        set_visible(card.benefits_heading, benefits ~= "")
+        set_visible(card.benefits, benefits ~= "")
         local recipe = tostring(preview.recipe or "")
         local ok, ingredients = pcall(render_ingredients, panel, card, preview.ingredients)
         if not ok then

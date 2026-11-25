@@ -5,7 +5,9 @@ local examples = {
         title = "Glazed Pumpkin Sandwich",
         icon = "T_Icon_Sandwich_Glazed_Pumpkin_Roast",
         description = "Compare the main artwork with the ingredient thumbnails, and check label readability against the game scene.",
-        stats = { { label = "Stack limit", value = 50 }, { label = "Unit weight", value = 2 } },
+        stats = { { label = "Stack limit", value = 50 }, { label = "Unit weight", value = "2 kg" } },
+        benefits = "Health +80  ·  Sustenance +100  ·  Perk duration 10 min\n"
+            .. "XP gain +10%\nWoodcutting and Mining stamina cost −33%\nHeals 8 health every 5 seconds",
         ingredients = {
             { title = "Dried Redberries", count = 1, icon = "T_Icon_Dried_Redberries" },
             { title = "Roast Pumpkin", count = 1, icon = "T_Icon_Roasted_Pumkin" },

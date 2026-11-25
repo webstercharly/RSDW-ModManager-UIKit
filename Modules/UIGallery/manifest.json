@@ -3,7 +3,7 @@
   "id": "ui-gallery",
   "name": "UI Gallery",
   "description": "Preview shared Mod Manager components.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "order": 96,
   "entry": "module.lua",
   "ui": {
