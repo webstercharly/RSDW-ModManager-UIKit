@@ -21,7 +21,9 @@ when changing the module view contract. In the installed manager, follow
   tokens for changes that should appear across modules.
 - Keep task-specific words on controls. Preserve Enter-to-search and a route
   back to the query or results. Pair selected-state color with a visible
-  outline. Keep disabled actions labelled and make them inert.
+  outline. Keep disabled actions labelled, inert and readable on Graphite.
+  Suppress the native light-grey disabled fill. Show empty results as a
+  single muted text message.
 - Keep item art supplemental to readable text. Reuse native texture references
   and the host image queue. Compare illustrated, text-only and missing-image
   states in the gallery before changing the view contract.

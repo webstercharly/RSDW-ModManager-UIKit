@@ -28,7 +28,8 @@ for contrast targets and the live gallery checklist.
 
 1. In the search view, use a clear input hint, a visible Search action and
    `focusInput = true` when the user returns to search. Enter submits the same
-   search as the button. Use a disabled row to explain empty results.
+   search as the button. Use one muted text message for empty results.
+   Keep the failed query available for editing.
 2. Keep result titles readable while native icons load. A row accepts
    `title`, `value`, optional `icon`, and the boolean flags `selected`
    and `disabled` for pooled rows. Keep a stable `value` for matching
@@ -37,10 +38,14 @@ for contrast targets and the live gallery checklist.
    ingredient thumbnails when the selected item has a recipe. Item Spawn's
    **Back to results** reuses the last results. **Search Again** clears the
    selection and restores the search field.
-4. Make the current primary action clear with `primary = true` in its
-   manifest entry. Show secondary actions alongside it. Set
-   `disabled = true` when an action is visible but unavailable. An Item
-   Spawn quantity field keeps Enter from spawning items.
+4. Use the warm outline for a primary action and the graphite inset
+   for secondary buttons. Declare `primary = true` on the manifest
+   action that best advances the task. Use `row.action = true` for a
+   one-off command among rows. Use `row.destination = true` and a
+   chevron for a link to a subview. Keep Back first and size it to its
+   label. Keep unavailable actions inert and suppress the native
+   light-grey disabled fill. An Item Spawn quantity field keeps Enter
+   from spawning items.
 
 ## View contract
 
@@ -53,6 +58,10 @@ Use `benefits` for plain-text on-use effects. Keep weight and stack limit
 in `stats`, and use line breaks to separate immediate effects from perks.
 Use `recipe` as a text fallback for the grid and `footnote` for supporting
 information. A card with no artwork expands to fill the available width.
+Set `preview.compact = true` for content-rich details inside a fixed panel.
+It reduces card padding and artwork size and puts the stats in one
+wrapping strip. Check the whole view at the target height with the action
+dock visible. Keep the text, effects and ingredient tiles readable.
 
 The host creates a kit with `new(host)`, supplying `valid`, `construct`,
 `sized`, `pad`, `new_text`, `load_class`, `make_game_button`,

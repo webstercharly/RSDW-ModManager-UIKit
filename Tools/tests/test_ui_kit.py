@@ -102,15 +102,16 @@ class UIKitTests(unittest.TestCase):
             local kit = require("rlm_ui_kit").new({ valid = function(widget) return widget ~= nil end })
             local button, label = {}, {}
             function button:SetIsEnabled(enabled) self.enabled = enabled end
+            function button:SetRenderOpacity(opacity) self.opacity = opacity end
             function label:SetText(text) self.text = text end
             function label:SetColorAndOpacity(color) self.color = color.SpecifiedColor end
             local entry = { button = button, label = label }
             kit.set_button_enabled(entry, false)
             kit.update_button(entry, "Unavailable", false)
-            assert(button.enabled == false and label.color.R == 0.49)
-            kit.set_button_enabled(entry, true)
+            assert(button.enabled == false and button.opacity == 0 and label.color.R == 0.49)
+            kit.style_action(entry, true, true)
             kit.update_button(entry, "Selected", true)
-            assert(button.enabled == true and label.color.R == 0.91)
+            assert(button.enabled == true and button.opacity == 1 and label.color.R == 0.91)
         """)
 
     def test_control_feedback_resets_after_hover_spin_and_close(self):

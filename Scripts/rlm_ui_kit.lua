@@ -1,7 +1,7 @@
 -- Reusable UMG components. The host owns widget lifetimes, input and textures.
 local glass = require("rlm_glass")
 local themes = require("rlm_ui_theme")
-local M = { VERSION = "0.5.2" }
+local M = { VERSION = "0.5.4" }
 
 function M.style_button_label(text)
     pcall(function()
@@ -424,11 +424,9 @@ function M.new(host)
         if not (text_class and frame and line and art and image and body and stats) then return nil end
 
         frame:AddChild(line)
-        pad(panel.preview_box:AddChildToVerticalBox(frame), 0, 5, 6, 12)
+        local frame_slot = panel.preview_box:AddChildToVerticalBox(frame)
         apply_surface(frame, "card")
         local spacing = theme.spacing
-        local inset = spacing.cardInset
-        frame:SetPadding({ Left = inset, Top = inset, Right = inset, Bottom = inset })
 
         local image_holder = sized(tree, image, spacing.artwork, spacing.artwork)
         art:AddChild(image_holder)
@@ -453,28 +451,35 @@ function M.new(host)
             -- optional SetWrapTextAt method. The fill slot constrains the width.
             pcall(function() block:SetAutoWrapText(true) end)
         end
-        pad(body:AddChildToVerticalBox(title), 0, 0, 0, 6)
-        pad(body:AddChildToVerticalBox(description), 0, 0, 0, 10)
+        local title_slot = body:AddChildToVerticalBox(title)
+        local description_slot = body:AddChildToVerticalBox(description)
         local stats_holder = construct(tree, "Border") or stats
         if stats_holder ~= stats then
             stats_holder:AddChild(stats)
             apply_surface(stats_holder, "stats")
             stats_holder:SetPadding({ Left = 12, Top = 7, Right = 12, Bottom = 7 })
         end
-        pad(body:AddChildToVerticalBox(stats_holder), 0, 0, 0, 13)
+        local stats_slot = body:AddChildToVerticalBox(stats_holder)
         pad(body:AddChildToVerticalBox(benefits_heading), 0, 0, 0, 3)
-        pad(body:AddChildToVerticalBox(benefits), 0, 0, 0, 13)
+        local benefits_slot = body:AddChildToVerticalBox(benefits)
         pad(body:AddChildToVerticalBox(recipe_heading), 0, 0, 0, 3)
         local ingredient_grid = construct(tree, "UniformGridPanel")
+        local ingredients_slot
         if ingredient_grid then
-            pad(body:AddChildToVerticalBox(ingredient_grid), 0, 0, 0, 8)
+            ingredients_slot = body:AddChildToVerticalBox(ingredient_grid)
             pcall(function()
                 ingredient_grid:SetSlotPadding({ Left = 0, Top = 2, Right = 6, Bottom = 3 })
             end)
         end
-        pad(body:AddChildToVerticalBox(recipe_summary), 0, 0, 0, 10)
+        local recipe_slot = body:AddChildToVerticalBox(recipe_summary)
         body:AddChildToVerticalBox(footnote)
 
+        local inline_stats = new_text(tree, text_class, "", theme.typography.control, theme.colors.cream)
+        if valid(inline_stats) then
+            pcall(function() inline_stats:SetAutoWrapText(true) end)
+            local slot = stats:AddChildToHorizontalBox(inline_stats)
+            pcall(function() slot:SetSize({ Value = 1, SizeRule = 1 }) end)
+        end
         local cells = {}
         for index = 1, 3 do
             local column = construct(tree, "VerticalBox")
@@ -499,11 +504,34 @@ function M.new(host)
             pad(slot, 0, 0, 7, 0)
             cells[index] = { holder = column, divider = divider_holder, label = label, value = value }
         end
-        return { art = art, image = image, image_holder = image_holder, title = title,
+        return { frame = frame, art = art, image = image, image_holder = image_holder, title = title,
             description = description, benefits_heading = benefits_heading, benefits = benefits,
             recipe_heading = recipe_heading, recipe_summary = recipe_summary,
             ingredient_grid = ingredient_grid, ingredient_cells = {},
-            footnote = footnote, stats = stats_holder, cells = cells }
+            footnote = footnote, stats = stats_holder, inline_stats = inline_stats, cells = cells,
+            slots = { frame = frame_slot, art = art_slot, title = title_slot, description = description_slot,
+                stats = stats_slot, benefits = benefits_slot, ingredients = ingredients_slot, recipe = recipe_slot } }
+    end
+
+    local function set_preview_density(card, compact)
+        if card.compact == compact then return end
+        card.compact = compact
+        local spacing, slots = theme.spacing, card.slots
+        local inset = compact and math.max(10, spacing.cardInset - 6) or spacing.cardInset
+        local artwork = compact and math.max(100, math.floor(spacing.artwork * 0.86)) or spacing.artwork
+        card.frame:SetPadding({ Left = inset, Top = inset, Right = inset, Bottom = inset })
+        pcall(function()
+            card.image_holder:SetWidthOverride(artwork)
+            card.image_holder:SetHeightOverride(artwork)
+        end)
+        pad(slots.art, 0, 0, compact and math.max(8, spacing.cardGap - 5) or spacing.cardGap, 0)
+        pad(slots.frame, 0, compact and 3 or 5, 6, compact and 5 or 12)
+        pad(slots.title, 0, 0, 0, compact and 3 or 6)
+        pad(slots.description, 0, 0, 0, compact and 6 or 10)
+        pad(slots.stats, 0, 0, 0, compact and 8 or 13)
+        pad(slots.benefits, 0, 0, 0, compact and 8 or 13)
+        pad(slots.ingredients, 0, 0, 0, compact and 4 or 8)
+        pad(slots.recipe, 0, 0, 0, compact and 5 or 10)
     end
 
     local function render_preview(panel, preview)
@@ -518,6 +546,7 @@ function M.new(host)
         end
         local card = panel.item_preview
         if not card then return end
+        set_preview_density(card, preview.compact == true)
         card.title:SetText(FText(tostring(preview.title or "")))
         card.description:SetText(FText(tostring(preview.description or "")))
         local benefits = type(preview.benefits) == "string" and preview.benefits or ""
@@ -540,9 +569,18 @@ function M.new(host)
         set_visible(card.description, tostring(preview.description or "") ~= "")
         set_visible(card.footnote, tostring(preview.footnote or "") ~= "")
         local stats = preview.stats or {}
+        local inline = card.compact and valid(card.inline_stats)
         set_visible(card.stats, #stats > 0)
+        set_visible(card.inline_stats, inline and #stats > 0)
+        if inline then
+            local facts = {}
+            for index, stat in ipairs(stats) do
+                facts[index] = tostring(stat.label) .. " " .. tostring(stat.value)
+            end
+            card.inline_stats:SetText(FText(table.concat(facts, "  ·  ")))
+        end
         for index, cell in ipairs(card.cells) do
-            local stat = stats[index]
+            local stat = not inline and stats[index] or nil
             set_visible(cell.holder, stat ~= nil)
             set_visible(cell.divider, stat ~= nil)
             if stat then
@@ -567,7 +605,22 @@ function M.new(host)
         entry.enabled = enabled
         if valid(entry.button) then
             pcall(function() entry.button:SetIsEnabled(enabled) end)
+            if valid(entry.label) then
+                -- Keep the kit label visible while suppressing CommonUI's grey disabled fill.
+                local opacity = (entry.fireflies or entry.icon_widget) and 0.004 or 1
+                pcall(function() entry.button:SetRenderOpacity(enabled and opacity or 0) end)
+            end
         end
+    end
+
+    local function style_action(entry, enabled, primary)
+        set_button_enabled(entry, enabled)
+        local surface = primary and "primary" or "inset"
+        if valid(entry.accent) and entry.accent_surface ~= surface then
+            apply_surface(entry.accent, surface)
+            entry.accent_surface = surface
+        end
+        show_button_accent(entry, enabled)
     end
 
     local function make_pagination(controller, like, tree)
@@ -599,9 +652,6 @@ function M.new(host)
         for direction, title in pairs({ previous = "‹ Previous", next = "Next ›" }) do
             local button = entry[direction]
             local enabled = page[direction] ~= nil
-            if button.enabled ~= enabled and valid(button.label) and valid(button.button) then
-                pcall(function() button.button:SetRenderOpacity(enabled and 1 or 0.004) end)
-            end
             set_button_enabled(button, enabled)
             update_panel_button(button, title, false)
             show_button_accent(button, enabled)
@@ -623,6 +673,7 @@ function M.new(host)
         update_pagination = update_pagination,
         show_button_accent = show_button_accent,
         set_button_enabled = set_button_enabled,
+        style_action = style_action,
         prepare_row_icon = prepare_row_icon,
         render_preview = render_preview,
     }

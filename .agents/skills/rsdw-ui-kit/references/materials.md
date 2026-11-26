@@ -8,6 +8,12 @@
 | Xbox Accessibility Guideline 102 calls for testing the lowest-contrast part of variable backgrounds. [Xbox contrast](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/102) | Aim for 4.5:1 for standard text, including hints, and 3:1 for inactive labels. Sample the rendered text against the brightest or closest-matching patch it crosses. These are design targets and need in-game measurement. |
 | Xbox Accessibility Guidelines 103 and 113 call for additional visual cues and recognizable focus. [Xbox additional cues](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/103) and [Xbox focus handling](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/113) | Pair selected or primary color with a border. Use distinct normal, hover and focused input brushes. Keep labelled controls and observable changes after Search, Back and Reset. |
 
+## Empty and disabled states
+
+Show an empty result as a single line of muted Graphite text. Keep disabled
+controls inert with readable labels on the Graphite surface. Suppress the
+native CommonUI light-grey fill and low-contrast lettering.
+
 ## Review in Dragonwilds
 
 1. Open **UI Gallery** in a dark interior and in bright daylight. Capture the
