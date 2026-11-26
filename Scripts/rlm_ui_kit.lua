@@ -1,7 +1,7 @@
 -- Reusable UMG components. The host owns widget lifetimes, input and textures.
 local glass = require("rlm_glass")
 local themes = require("rlm_ui_theme")
-local M = { VERSION = "0.4.0" }
+local M = { VERSION = "0.5.2" }
 
 function M.style_button_label(text)
     pcall(function()
@@ -18,8 +18,8 @@ function M.new(host)
     local set_visible, TEXT_CLASS = host.set_visible, host.text_class
     local theme = themes.defaults()
 
-    local function apply_surface(border, scheme)
-        return glass.apply(border, scheme, theme)
+    local function apply_surface(border, scheme, max_radius)
+        return glass.apply(border, scheme, theme, max_radius)
     end
 
     local function style_input(input)
@@ -108,6 +108,98 @@ function M.new(host)
         end
     end
 
+    local function is_hovered(widget)
+        if not valid(widget) then return false end
+        local ok, hovered = pcall(function() return widget:IsHovered() end)
+        return ok and hovered == true
+    end
+
+    local function texture_image(tree, texture, color)
+        if not valid(texture) then return nil end
+        local image = construct(tree, "Image")
+        if not valid(image) then return nil end
+        local ok = pcall(function()
+            image:SetBrushFromTexture(texture, false)
+            image:SetColorAndOpacity(color)
+            image:SetVisibility(3)
+        end)
+        return ok and image or nil
+    end
+
+    local function make_fireflies(tree, overlay, texture, centered, label_inset)
+        local flies = {}
+        for index = 1, 2 do
+            local image = texture_image(tree, texture, index == 1 and theme.colors.gold or theme.colors.accent)
+            local diameter = index == 1 and 15 or 10
+            local dot = image and sized(tree, image, diameter, diameter)
+            if valid(dot) then
+                local slot = overlay:AddChildToOverlay(dot)
+                if valid(slot) then
+                    pcall(function() dot:SetVisibility(1) end)
+                    pcall(function()
+                        slot:SetHorizontalAlignment(centered and 2 or 1)
+                        slot:SetVerticalAlignment(2)
+                    end)
+                    pad(slot, centered and 0 or label_inset - diameter / 2, 0, 0, 0)
+                    flies[#flies + 1] = dot
+                end
+            end
+        end
+        return #flies > 0 and flies or nil
+    end
+
+    local function firefly_position(progress, width, radius)
+        -- Straight runs keep the sparks above and below the text. The two
+        -- semicircles turn around its ends at the same speed.
+        local turn = math.pi * radius
+        local distance = progress * (2 * width + 2 * turn)
+        if distance < width then return distance, -radius end
+        distance = distance - width
+        if distance < turn then
+            local angle = distance / radius
+            return width + radius * math.sin(angle), -radius * math.cos(angle)
+        end
+        distance = distance - turn
+        if distance < width then return width - distance, radius end
+        local angle = (distance - width) / radius
+        return -radius * math.sin(angle), radius * math.cos(angle)
+    end
+
+    local function animate_fireflies(entry, hovered)
+        if not entry or not entry.fireflies then return end
+        local frame = entry.firefly_frame
+        if not hovered and not frame then return end
+        if hovered and not entry.firefly_width then
+            local width
+            if valid(entry.label) then
+                local ok, measured = pcall(function() return tonumber(entry.label:GetDesiredSize().X) end)
+                if ok and measured and measured > 0 then width = measured end
+            end
+            local text = entry.firefly_label or ""
+            entry.firefly_width = width or math.max(1, #text * theme.typography.control * 0.58)
+        end
+        local radius = math.min(theme.spacing.row / 2 - 6, theme.typography.control / 2 + 5)
+        for index, dot in ipairs(entry.fireflies) do
+            if valid(dot) then
+                pcall(function()
+                    if not hovered then
+                        dot:SetVisibility(1)
+                        return
+                    end
+                    if not frame then dot:SetVisibility(3) end
+                    local progress = ((frame or 0) / 108 + 0.1 + (index - 1) * 0.46) % 1
+                    local fade = math.min(((frame or 0) + 1) / 5, 1)
+                    local x, y = firefly_position(progress, entry.firefly_width, radius)
+                    if entry.firefly_centered then x = x - entry.firefly_width / 2 end
+                    dot:SetRenderOpacity(fade * (0.77 + 0.18 * math.sin(progress * 2 * math.pi)))
+                    dot:SetRenderTranslation({ X = x, Y = y })
+                end)
+            end
+        end
+        entry.firefly_frame = hovered and (frame or 0) + 1 or nil
+        if not hovered then entry.firefly_width = nil end
+    end
+
     -- The pause-menu button's built-in label is intentionally large and subdued.
     -- Keep its proven click/selection behavior, but draw a compact high-contrast
     -- label above it for the manager's navigation, rows and actions.
@@ -139,30 +231,107 @@ function M.new(host)
             options.color or theme.colors.cream)
         M.style_button_label(text)
         local text_slot = overlay:AddChildToOverlay(text)
+        local centered = options.center == true
+        local label_inset = centered and 8 or 16
         pcall(function()
-            text_slot:SetHorizontalAlignment(options.center == true and 2 or 1)
+            text_slot:SetHorizontalAlignment(centered and 2 or 1)
             text_slot:SetVerticalAlignment(2)
-            text_slot:SetPadding({ Left = options.center == true and 8 or 16,
-                Top = 0, Right = options.center == true and 8 or 10, Bottom = 0 })
+            text_slot:SetPadding({ Left = label_inset, Top = 0, Right = centered and 8 or 10, Bottom = 0 })
         end)
+        local fireflies = options.fireflies and make_fireflies(tree, overlay, options.fireflies, centered, label_inset)
+        if fireflies and valid(button) then
+            pcall(function() overlay:SetVisibility(0) end)
+            pcall(function() button:SetRenderOpacity(0.004) end)
+        end
         return { button = button, widget = overlay, label = text, text_slot = text_slot, accent = accent,
-            normal = options.color or theme.colors.cream, selected = options.selected or theme.colors.gold }
+            normal = options.color or theme.colors.cream, selected = options.selected or theme.colors.gold,
+            fireflies = fireflies, firefly_label = fireflies and tostring(label or "") or nil,
+            firefly_centered = fireflies and centered }
+    end
+
+    local function make_icon_button(controller, texture, like, tree)
+        local entry = make_panel_button(controller, "", like, tree,
+            { center = true, accent = "iconButton" })
+        if not entry or not valid(entry.label) or not valid(entry.accent) then return entry end
+        local icon = texture_image(tree, texture, theme.colors.cream)
+        if not icon then return entry end
+        local line, text_class = construct(tree, "HorizontalBox"), load_class(TEXT_CLASS)
+        if not valid(line) or not text_class then return entry end
+        local hint = new_text(tree, text_class, "", theme.typography.caption, theme.colors.cream)
+        if not valid(hint) then return entry end
+        M.style_button_label(hint)
+        set_visible(hint, false)
+        local hint_slot = line:AddChildToHorizontalBox(hint)
+        if valid(hint_slot) then
+            pcall(function() hint_slot:SetVerticalAlignment(2) end)
+            pad(hint_slot, 0, 0, 8, 0)
+        end
+        local diameter = theme.spacing.row
+        local overlay = entry.widget
+        local icon_holder = sized(tree, icon, 22, 22)
+        if not valid(icon_holder) then return entry end
+        local icon_slot = overlay:AddChildToOverlay(icon_holder)
+        if not valid(icon_slot) then return entry end
+        pcall(function()
+            icon_holder:SetVisibility(3)
+            icon_slot:SetHorizontalAlignment(2)
+            icon_slot:SetVerticalAlignment(2)
+            icon:SetRenderTransformPivot({ X = 0.5, Y = 0.5 })
+            overlay:SetVisibility(0)
+        end)
+        line:AddChildToHorizontalBox(sized(tree, overlay, diameter, diameter))
+        apply_surface(entry.accent, "iconButton", diameter / 2)
+        pcall(function() entry.accent:SetRenderOpacity(0.78) end)
+        if valid(entry.button) then pcall(function() entry.button:SetRenderOpacity(0.004) end) end
+        entry.widget, entry.icon_widget, entry.hint, entry.hit_target = line, icon, hint, overlay
+        return entry
+    end
+
+    local function animate_icon_button(entry, visible)
+        if not entry or not entry.icon_widget then return end
+        local hovered = visible and is_hovered(entry.hit_target)
+        if hovered ~= entry.hovered and valid(entry.hint) then
+            pcall(function() entry.hint:SetVisibility(hovered and 3 or 1) end)
+        end
+        entry.hovered = hovered
+        local previous = entry.hover_amount or 0
+        local amount = hovered and math.min(previous + 0.25, 1) or math.max(previous - 0.25, 0)
+        if not visible then amount = 0 end
+        if amount ~= previous then
+            local scale = 1 + amount * 0.12
+            if valid(entry.accent) then pcall(function() entry.accent:SetRenderOpacity(0.78 + amount * 0.22) end) end
+            if valid(entry.icon_widget) then
+                pcall(function() entry.icon_widget:SetRenderScale({ X = scale, Y = scale }) end)
+            end
+            entry.hover_amount = amount
+        end
+        if entry.spin_frame then
+            local progress = visible and math.min((entry.spin_frame + 1) / 10, 1) or 1
+            local angle = progress < 1 and 360 * progress * progress * (3 - 2 * progress) or 0
+            if valid(entry.icon_widget) then pcall(function() entry.icon_widget:SetRenderTransformAngle(angle) end) end
+            entry.spin_frame = progress < 1 and entry.spin_frame + 1 or nil
+        end
     end
 
     local function update_panel_button(entry, label, selected, color)
         if not entry then return end
+        local caption = tostring(label or "")
+        if entry.fireflies and entry.firefly_label ~= caption then
+            entry.firefly_label, entry.firefly_width = caption, nil
+        end
         entry.normal = color or entry.normal or theme.colors.cream
         if valid(entry.label) then
             pcall(function()
-                entry.label:SetText(FText(tostring(label or "")))
+                entry.label:SetText(FText(entry.icon_widget and "" or caption))
                 entry.label:SetColorAndOpacity({
                     SpecifiedColor = entry.enabled == false and theme.colors.disabled
                         or (selected == true and (entry.selected or theme.colors.gold) or entry.normal),
                     ColorUseRule = 0,
                 })
             end)
+            if valid(entry.hint) then pcall(function() entry.hint:SetText(FText(caption)) end) end
         elseif valid(entry.button) then
-            pcall(function() entry.button:SetLabelText(FText(tostring(label or ""))) end)
+            pcall(function() entry.button:SetLabelText(FText(caption)) end)
         end
     end
 
@@ -401,13 +570,57 @@ function M.new(host)
         end
     end
 
+    local function make_pagination(controller, like, tree)
+        local line, text_class = construct(tree, "HorizontalBox"), load_class(TEXT_CLASS)
+        if not valid(line) or not text_class then return nil end
+        local style = { center = true, size = theme.typography.caption, accent = "inset" }
+        local previous = make_panel_button(controller, "‹ Previous", like, tree, style)
+        local following = make_panel_button(controller, "Next ›", like, tree, style)
+        local label = new_text(tree, text_class, "", theme.typography.caption, theme.colors.muted)
+        if not previous or not following or not valid(label) then return nil end
+        M.style_button_label(label)
+        line:AddChildToHorizontalBox(sized(tree, previous.widget, 94, theme.spacing.row))
+        local label_slot = line:AddChildToHorizontalBox(label)
+        if valid(label_slot) then
+            label_slot:SetVerticalAlignment(2)
+            pad(label_slot, 12, 0, 12, 0)
+        end
+        line:AddChildToHorizontalBox(sized(tree, following.widget, 80, theme.spacing.row))
+        return { widget = line, label = label, previous = previous, next = following }
+    end
+
+    local function update_pagination(entry, page)
+        if not entry then return end
+        set_visible(entry.widget, page ~= nil)
+        if not page then return end
+        if valid(entry.label) then
+            pcall(function() entry.label:SetText(FText(("%d / %d"):format(page.page, page.pages))) end)
+        end
+        for direction, title in pairs({ previous = "‹ Previous", next = "Next ›" }) do
+            local button = entry[direction]
+            local enabled = page[direction] ~= nil
+            if button.enabled ~= enabled and valid(button.label) and valid(button.button) then
+                pcall(function() button.button:SetRenderOpacity(enabled and 1 or 0.004) end)
+            end
+            set_button_enabled(button, enabled)
+            update_panel_button(button, title, false)
+            show_button_accent(button, enabled)
+        end
+    end
+
     return {
         set_theme = function(value) theme = value end,
         apply_surface = apply_surface,
         style_input = style_input,
         surface_with_shadow = surface_with_shadow,
         make_button = make_panel_button,
+        make_icon_button = make_icon_button,
         update_button = update_panel_button,
+        is_hovered = is_hovered,
+        animate_fireflies = animate_fireflies,
+        animate_icon_button = animate_icon_button,
+        make_pagination = make_pagination,
+        update_pagination = update_pagination,
         show_button_accent = show_button_accent,
         set_button_enabled = set_button_enabled,
         prepare_row_icon = prepare_row_icon,

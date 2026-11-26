@@ -4,11 +4,12 @@ local M = {}
 local themes = require("rlm_ui_theme")
 local panel_count = 0
 
-function M.apply(border, scheme, theme)
+function M.apply(border, scheme, theme, max_radius)
     theme = theme or themes.active()
     local style = theme.surfaces[scheme]
     if not style or not border then return false end
     local radius, fill, edge = style.radius, style.fill, style.edge
+    if max_radius then radius = math.min(radius, max_radius) end
     local tone = (scheme == "primary" or scheme == "selected") and theme.colors.accent or theme.colors.edge
     local colored = pcall(function()
         border:SetBrushColor(fill)

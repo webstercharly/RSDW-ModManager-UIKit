@@ -62,6 +62,8 @@ class UIKitTests(unittest.TestCase):
             assert(border.color.A == 0.68 and border.brush.DrawAs == 4)
             assert(border.brush.OutlineSettings.CornerRadii.X == 14)
             assert(border.brush.OutlineSettings.Color.SpecifiedColor.A == 0.24)
+            assert(require("rlm_glass").apply(border, "iconButton", theme, 19))
+            assert(border.brush.OutlineSettings.CornerRadii.X == 19)
         """)
 
     def test_native_hud_mount_uses_active_theme_and_preserves_content(self):
@@ -109,6 +111,58 @@ class UIKitTests(unittest.TestCase):
             kit.set_button_enabled(entry, true)
             kit.update_button(entry, "Selected", true)
             assert(button.enabled == true and label.color.R == 0.91)
+        """)
+
+    def test_control_feedback_resets_after_hover_spin_and_close(self):
+        self.lua.execute("""
+            local function widget()
+                return {
+                    SetVisibility = function(self, value) self.visibility = value end,
+                    SetRenderOpacity = function(self, value) self.opacity = value end,
+                    SetRenderScale = function(self, value) self.scale = value end,
+                    SetRenderTransformAngle = function(self, value) self.angle = value end,
+                    SetRenderTranslation = function(self, value) self.translation = value end,
+                    IsHovered = function(self) return self.hovered end,
+                }
+            end
+            local kit = require("rlm_ui_kit").new({ valid = function(value) return value ~= nil end })
+            local icon = { icon_widget = widget(), hit_target = widget(), accent = widget(), hint = widget() }
+            icon.hit_target.hovered = true
+            for _ = 1, 4 do kit.animate_icon_button(icon, true) end
+            assert(icon.hint.visibility == 3 and icon.icon_widget.scale.X == 1.12 and icon.accent.opacity == 1)
+            icon.spin_frame = 0
+            kit.animate_icon_button(icon, true)
+            assert(icon.icon_widget.angle > 0 and icon.icon_widget.angle < 360)
+            for _ = 1, 9 do kit.animate_icon_button(icon, true) end
+            assert(icon.spin_frame == nil and icon.icon_widget.angle == 0)
+            icon.spin_frame = 4
+            kit.animate_icon_button(icon, false)
+            assert(icon.spin_frame == nil and icon.hint.visibility == 1 and icon.icon_widget.scale.X == 1)
+
+            local dot = widget()
+            local measurements = 0
+            local label = { width = 90 }
+            function label:GetDesiredSize()
+                measurements = measurements + 1
+                return { X = self.width }
+            end
+            local rail = { fireflies = { dot }, label = label }
+            kit.animate_fireflies(rail, true)
+            local left, right, top, bottom = false, false, false, false
+            for _ = 1, 108 do
+                kit.animate_fireflies(rail, true)
+                local x, y = dot.translation.X, dot.translation.Y
+                left, right = left or x < -10, right or x > 100
+                top, bottom = top or y < -11, bottom or y > 11
+                assert(x <= 0 or x >= label.width or math.abs(y) >= 11)
+            end
+            assert(left and right and top and bottom and measurements == 1)
+            assert(dot.visibility == 3 and dot.opacity > 0.3)
+            kit.animate_fireflies(rail, false)
+            assert(dot.visibility == 1 and rail.firefly_frame == nil and rail.firefly_width == nil)
+            label.width = 132
+            kit.animate_fireflies(rail, true)
+            assert(rail.firefly_width == 132 and measurements == 2)
         """)
 
     def test_input_styles_show_distinct_hover_and_focus(self):

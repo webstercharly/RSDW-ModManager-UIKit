@@ -9,6 +9,17 @@ surface for a single band of related values. Reserve amber outlines for the
 active navigation entry, the selected result and the primary action.
 The surfaces use static Slate brushes.
 
+Use a circular icon for a familiar utility such as Refresh. Show its
+text label on hover and keep the hit area fixed while the icon animates.
+Load the bundled `art/ui_refresh.png` as a texture so the arrow has the
+same shape with every game font. Pass it to `make_icon_button`.
+Use the rail's small firefly highlights for hover and the outline for
+selection. Load `art/ui_firefly.png` and pass the texture as the
+`fireflies` option on rail buttons. Check hover on the row's overlay.
+Orbit the label itself and measure its desired width at hover entry.
+Run both effects on the existing open-panel tick. Keep page
+controls in a fixed footer with the current and total page counts.
+
 Review small labels, hints and the focused field against both dark and bright
 backgrounds. Use the [materials reference](../.agents/skills/rsdw-ui-kit/references/materials.md)
 for contrast targets and the live gallery checklist.
