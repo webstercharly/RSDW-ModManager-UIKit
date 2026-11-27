@@ -239,12 +239,13 @@ function M.new(host)
             text_slot:SetPadding({ Left = label_inset, Top = 0, Right = centered and 8 or 10, Bottom = 0 })
         end)
         local fireflies = options.fireflies and make_fireflies(tree, overlay, options.fireflies, centered, label_inset)
-        if fireflies and valid(button) then
+        if (fireflies or options.hoverable) and valid(button) then
             pcall(function() overlay:SetVisibility(0) end)
             pcall(function() button:SetRenderOpacity(0.004) end)
         end
         return { button = button, widget = overlay, label = text, text_slot = text_slot, accent = accent,
             normal = options.color or theme.colors.cream, selected = options.selected or theme.colors.gold,
+            base_accent = options.accent, hoverable = options.hoverable == true,
             fireflies = fireflies, firefly_label = fireflies and tostring(label or "") or nil,
             firefly_centered = fireflies and centered }
     end
@@ -607,7 +608,7 @@ function M.new(host)
             pcall(function() entry.button:SetIsEnabled(enabled) end)
             if valid(entry.label) then
                 -- Keep the kit label visible while suppressing CommonUI's grey disabled fill.
-                local opacity = (entry.fireflies or entry.icon_widget) and 0.004 or 1
+                local opacity = (entry.fireflies or entry.icon_widget or entry.hoverable) and 0.004 or 1
                 pcall(function() entry.button:SetRenderOpacity(enabled and opacity or 0) end)
             end
         end
@@ -621,6 +622,27 @@ function M.new(host)
             entry.accent_surface = surface
         end
         show_button_accent(entry, enabled)
+    end
+
+    local function animate_button_hover(entry, visible)
+        if not entry then return end
+        local hovered = visible and (is_hovered(entry.widget) or is_hovered(entry.button))
+        animate_fireflies(entry, hovered)
+        if entry.hovered ~= hovered then
+            entry.hovered = hovered
+            local surface = hovered and "selected" or (entry.base_accent or "inset")
+            if valid(entry.accent) and entry.accent_surface ~= surface then
+                apply_surface(entry.accent, surface)
+                entry.accent_surface = surface
+            end
+            if valid(entry.label) then
+                local color = entry.enabled == false and theme.colors.disabled
+                    or (hovered and (entry.selected or theme.colors.gold) or (entry.normal or theme.colors.cream))
+                pcall(function()
+                    entry.label:SetColorAndOpacity({ SpecifiedColor = color, ColorUseRule = 0 })
+                end)
+            end
+        end
     end
 
     local function make_pagination(controller, like, tree)
@@ -668,6 +690,7 @@ function M.new(host)
         update_button = update_panel_button,
         is_hovered = is_hovered,
         animate_fireflies = animate_fireflies,
+        animate_button_hover = animate_button_hover,
         animate_icon_button = animate_icon_button,
         make_pagination = make_pagination,
         update_pagination = update_pagination,

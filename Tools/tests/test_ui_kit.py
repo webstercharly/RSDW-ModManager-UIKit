@@ -166,6 +166,27 @@ class UIKitTests(unittest.TestCase):
             assert(rail.firefly_width == 132 and measurements == 2)
         """)
 
+    def test_button_hover_api_updates_state_and_label_color(self):
+        self.lua.execute("""
+            local kit = require("rlm_ui_kit").new({ valid = function(value) return value ~= nil end })
+            local widget = { hovered = true }
+            function widget:IsHovered() return self.hovered end
+            local label = {}
+            function label:SetColorAndOpacity(value) self.color = value.SpecifiedColor end
+            local entry = {
+                widget = widget,
+                label = label,
+                enabled = true,
+                normal = { R = 0.2, G = 0.3, B = 0.4, A = 1 },
+                selected = { R = 0.9, G = 0.8, B = 0.4, A = 1 },
+            }
+            kit.animate_button_hover(entry, true)
+            assert(entry.hovered == true and label.color.R == 0.9)
+            widget.hovered = false
+            kit.animate_button_hover(entry, true)
+            assert(entry.hovered == false and label.color.R == 0.2)
+        """)
+
     def test_input_styles_show_distinct_hover_and_focus(self):
         self.lua.execute("""
             local input = { WidgetStyle = {

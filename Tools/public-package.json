@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "ui-kit",
+  "boundaryScanPaths": ["Scripts", "Modules", "Data"],
+  "forbiddenPatterns": [
+    { "pattern": "rlm_(cheats|items|shortcut_bindings|automation)", "reason": "private gameplay service dependency" },
+    { "pattern": "(SpawnActor|Server_|teleport)", "reason": "UI Kit gameplay write" }
+  ],
+  "validatePng": true
+}
